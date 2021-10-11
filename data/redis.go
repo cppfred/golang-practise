@@ -18,6 +18,7 @@ type Message struct {
 
 type Token struct {
 	token string
+	uid   string
 }
 
 type RedisConn struct {

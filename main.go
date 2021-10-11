@@ -41,7 +41,25 @@ func testMysql() {
 
 }
 
+func testFileRename(path string) { //  T<60µs per call
+	hex, key, err := data.ReadFileBytes(path)
+	if err != nil {
+		panic(err)
+	}
+	hash256, err := data.GetHash256(hex, key)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(hash256)
+}
+
+const testPath = "D:\\1.docx"
+
 func main() {
-	testRedis()
-	testMysql()
+	for i := 0; i < 10; i++ {
+		st := time.Now()
+		testFileRename(testPath)
+		fmt.Println("once call used: ", time.Since(st)/time.Nanosecond)
+		time.Sleep(1)
+	}
 }

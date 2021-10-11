@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// Auto generate mysql dsn
+
 const dsnFormat = "%v:%v@tcp(127.0.0.1:%v)/%v?charset=utf8mb4&parseTime=True&loc=Local"
 
 type MysqlConf struct {
@@ -17,23 +19,46 @@ type MysqlConf struct {
 	dbname   string
 }
 
-func (*MysqlConf) generatedsn(c *MysqlConf) (dsn string) {
+func (c *MysqlConf) generatedsn() (dsn string) {
 	return fmt.Sprintf(dsnFormat, c.username, c.passwd, c.port, c.dbname)
 }
 
-var sqlConfCold = MysqlConf{username: "root", passwd: "123456", port: "3306", dbname: "test_gorm"}
-var sqlConfHot = MysqlConf{username: "root", passwd: "123456", port: "13306", dbname: "test_gorm"}
+func NewMysqlConf(username string, passwd string, port string, dbname string) *MysqlConf {
+	return &MysqlConf{username: username, passwd: passwd, port: port, dbname: dbname}
+}
 
-var dsnCold = fmt.Sprintf(dsnFormat, sqlConfCold.username, sqlConfCold.passwd, sqlConfCold.port, sqlConfCold.dbname)
-var dsnHot = fmt.Sprintf(dsnFormat, sqlConfHot.username, sqlConfHot.passwd, sqlConfHot.port, sqlConfHot.dbname)
+var dsnCold = NewMysqlConf("root", "123456", "3306", "test_cold").generatedsn()
+var dsnHot = NewMysqlConf("root", "123456", "3306", "test_hot").generatedsn()
+
+// Table structure define
 
 type groupMemberTable struct {
 	ID         uint64    `gorm:"primaryKey;autoIncrement;not null"`
 	UID        int64     `gorm:"not null;"`
 	GID        int64     `gorm:"not null;"`
-	CREATETIME time.Time `gorm:"autoCreateTime;not null"`
+	CREATETIME time.Time `gorm:"autoCreateTime:milli;not null"`
 }
 
+type p2bmessageTable struct { // for both hot and cold db
+	ID         uint64    `gorm:"primaryKey;autoIncrement;not null"`
+	From       int64     `gorm:"not null;"`
+	To         int64     `gorm:"not null;"`
+	SeqID      int64     `gorm:""`
+	Type       int32     `gorm:"not null;"`
+	Context    string    `gorm:"not null;"`
+	CREATETIME time.Time `gorm:"autoCreateTime:milli;not null"`
+}
+
+type p2pmessageTable struct { // for both hot and cold db
+	ID         uint64    `gorm:"primaryKey;autoIncrement;not null"`
+	From       int64     `gorm:"not null;"`
+	To         int64     `gorm:"not null;"`
+	Type       int32     `gorm:"not null;"`
+	Context    string    `gorm:"not null;"`
+	CREATETIME time.Time `gorm:"autoCreateTime:milli;not null"`
+}
+
+// SqlConn struct for MySQL Connection and its operate function
 type SqlConn struct {
 	db *gorm.DB
 }
@@ -55,4 +80,8 @@ func (sqldb *SqlConn) CreateTable(args ...interface{}) {
 
 func (sqldb *SqlConn) ListTable() {
 	_ = sqldb.db
+}
+
+func (sqldb *SqlConn) SwitchTable() {
+	sqldb.db = sqldb.db.Table("")
 }
